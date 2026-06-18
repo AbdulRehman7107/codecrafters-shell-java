@@ -5,7 +5,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         // TODO: Uncomment the code below to pass the first stage
     	Scanner sc = new Scanner(System.in);
-    	List<String> builtins = List.of("echo", "exit", "type");
+    	List<String> builtins = List.of("echo", "exit", "type", "pwd");
     	
     	while(true) {
     		System.out.print("$ ");
@@ -24,6 +24,12 @@ public class Main {
             	String result = string.substring(5);
             	System.out.println(result);
             }
+            
+            else if (string.equals("pwd")) {
+               
+                String currentDir = System.getProperty("user.dir");
+                System.out.println(currentDir);
+            }    
             
             else if(string.startsWith("type")) {
             	String arg = string.substring(5).trim();
