@@ -38,7 +38,14 @@ public class Main {
             	
             	if(pathArg.startsWith("/")) {
             		newDir = new File(pathArg);
-            	} else {
+            	} 
+            	
+            	else if(pathArg.equals("~")) {
+            		String homeDir = System.getenv("HOME");
+            		newDir = new File(homeDir);
+            	}
+            	
+            	else {
             		newDir = new File(System.getProperty("user.dir"),pathArg);
             		
             	}
