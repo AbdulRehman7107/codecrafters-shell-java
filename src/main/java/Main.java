@@ -34,7 +34,22 @@ public class Main {
             //handle cd
             else if(string.startsWith("cd")) {
             	String pathArg = string.substring(3).trim();
-            	File newDir = new File(pathArg);
+            	File newDir;
+            	
+            	if(pathArg.startsWith("/")) {
+            		newDir = new File(pathArg);
+            	} else {
+            		newDir = new File(System.getProperty("user.Dir"),pathArg);
+            		
+            	}
+            	
+            	newDir = newDir.getAbsoluteFile();
+            	
+            	try {
+            		newDir = newDir.getCanonicalFile();
+            	}catch(Exception a) {
+            		
+            	}
             	
             	if(newDir.exists() && newDir.isDirectory()) {
             		System.setProperty("user.dir", newDir.getAbsolutePath());
