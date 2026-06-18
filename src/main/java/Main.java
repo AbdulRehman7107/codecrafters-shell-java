@@ -9,7 +9,7 @@ public class Main {
     		System.out.print("$ ");
     		System.out.flush();
             String string = sc.nextLine();
-            if(string.equals("exit 0")) {
+            if(string.equals("exit")) {
             	break;
             }
             System.out.println(string + ": command not found");
