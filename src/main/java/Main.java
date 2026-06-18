@@ -55,6 +55,7 @@ public class Main {
             		System.setProperty("user.dir", newDir.getAbsolutePath());
             	} else {
             		System.out.println("cd: "+pathArg+": No such file or directory");
+            		System.out.flush();
             	}
             }
             
