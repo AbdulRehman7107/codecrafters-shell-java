@@ -49,7 +49,7 @@ public class Main {
             		List<String> commandList = new ArrayList<>();
             		commandList.add(executablePath);
             		
-            		for(int i=0; i<inputParts.length; i++) {
+            		for(int i=1; i<inputParts.length; i++) {
             			commandList.add(inputParts[i]);
             		}
             		
