@@ -71,7 +71,7 @@ public class Main {
             			commandList.add(inputParts[i]);
             		}
             		
-            		ProcessBuilder pb =new ProcessBu)ilder(commandList);
+            		ProcessBuilder pb =new ProcessBuilder(commandList);
             		pb.inheritIO();
             		
             		Process process = pb.start();
