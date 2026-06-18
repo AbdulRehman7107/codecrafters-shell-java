@@ -5,7 +5,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         // TODO: Uncomment the code below to pass the first stage
     	Scanner sc = new Scanner(System.in);
-    	List<String> builtins = List.of("echo", "exit", "type", "pwd");
+    	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd");
     	
     	while(true) {
     		System.out.print("$ ");
@@ -29,7 +29,19 @@ public class Main {
                
                 String currentDir = System.getProperty("user.dir");
                 System.out.println(currentDir);
-            }    
+            }
+            
+            //handle cd
+            else if(string.startsWith("cd")) {
+            	String pathArg = string.substring(3).trim();
+            	File newDir = new File(pathArg);
+            	
+            	if(newDir.exists() && newDir.isDirectory()) {
+            		System.setProperty("user.dir", newDir.getAbsolutePath());
+            	} else {
+            		System.out.println("cd: "+pathArg+": No such file or directory");
+            	}
+            }
             
             else if(string.startsWith("type")) {
             	String arg = string.substring(5).trim();
@@ -59,7 +71,7 @@ public class Main {
             			commandList.add(inputParts[i]);
             		}
             		
-            		ProcessBuilder pb =new ProcessBuilder(commandList);
+            		ProcessBuilder pb =new ProcessBu)ilder(commandList);
             		pb.inheritIO();
             		
             		Process process = pb.start();
