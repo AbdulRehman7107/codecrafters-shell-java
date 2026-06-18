@@ -39,7 +39,7 @@ public class Main {
             	if(pathArg.startsWith("/")) {
             		newDir = new File(pathArg);
             	} else {
-            		newDir = new File(System.getProperty("user.Dir"),pathArg);
+            		newDir = new File(System.getProperty("user.dir"),pathArg);
             		
             	}
             	
