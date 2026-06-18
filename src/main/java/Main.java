@@ -6,16 +6,25 @@ public class Main {
         // TODO: Uncomment the code below to pass the first stage
     	Scanner sc = new Scanner(System.in);
     	List<String> builtins = List.of("echo", "exit", "type");
+    	
     	while(true) {
     		System.out.print("$ ");
     		System.out.flush();
-            String string = sc.nextLine();
+            
+    		String string = sc.nextLine().trim();
+    		if(string.isEmpty()) {
+    			continue;
+    		}
+    		
             if(string.equals("exit")) {
             	break;
-            } else if(string.startsWith("echo")) {
+            }
+            
+            else if(string.startsWith("echo")) {
             	String result = string.substring(5);
             	System.out.println(result);
-            } 
+            }
+            
             else if(string.startsWith("type")) {
             	String arg = string.substring(5).trim();
             	
@@ -30,9 +39,28 @@ public class Main {
                 	}
             	}
             }
-            
             else {
-            	System.out.println(string + ": command not found");
+            	String[] inputParts = string.split(" ");
+            	String command = inputParts[0];
+            	
+            	String executablePath = getPath(command);
+            	
+            	if(executablePath != null) {
+            		List<String> commandList = new ArrayList<>();
+            		commandList.add(command);
+            		
+            		for(int i=0; i<inputParts.length; i++) {
+            			commandList.add(inputParts[i]);
+            		}
+            		
+            		ProcessBuilder pb =new ProcessBuilder(commandList);
+            		pb.inheritIO();
+            		
+            		Process process = pb.start();
+            		process.waitFor();
+            	} else {
+            		System.out.println(string+": command not found");
+            	}
             }
     	}  
     }
