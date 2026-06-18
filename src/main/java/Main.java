@@ -47,7 +47,7 @@ public class Main {
             	
             	if(executablePath != null) {
             		List<String> commandList = new ArrayList<>();
-            		commandList.add(command);
+            		commandList.add(executablePath);
             		
             		for(int i=0; i<inputParts.length; i++) {
             			commandList.add(inputParts[i]);
