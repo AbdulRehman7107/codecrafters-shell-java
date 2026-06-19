@@ -5,17 +5,19 @@ import java.io.PrintStream;
 
 public class Main {
     // A clean helper class to store job details
-    private static class Job {
-        int id;
-        Process process;
-        String commandLine;
+	private static class Job {
 
-        Job(int id, Process process, String commandLine) {
-            this.id = id;
-            this.process = process;
-            this.commandLine = commandLine;
-        }
-    }
+	    int id;
+	    Process process;
+	    String commandLine;
+	    boolean doneDisplayed = false;
+
+	    Job(int id, Process process, String commandLine) {
+	        this.id = id;
+	        this.process = process;
+	        this.commandLine = commandLine;
+	    }
+	}
 
     private static final List<Job> backgroundJobs = new ArrayList<>();
     private static int nextJobId = 1;
@@ -25,16 +27,8 @@ public class Main {
     	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
     	
     	while(true) {
-            // Reap and notify completed background processes before displaying the next prompt
-            Iterator<Job> it = backgroundJobs.iterator();
-            while (it.hasNext()) {
-                Job job = it.next();
-                if (!job.process.isAlive()) {
-                    // Cleanly print out the termination status matching standard shell expectations
-                    System.out.printf("[%d]  Done                    %s%n", job.id, job.commandLine);
-                    it.remove();
-                }
-            }
+            // Silently clean up completed background processes before displaying the next prompt
+            //backgroundJobs.removeIf(job -> !job.process.isAlive());
 
     		System.out.print("$ ");
     		System.out.flush();
@@ -190,17 +184,17 @@ public class Main {
 	            }
 
 	            // handle jobs command
+	         // handle jobs command
 	            else if(command.equals("jobs")) {
+
 	                int size = backgroundJobs.size();
 
 	                for (int i = 0; i < size; i++) {
+
 	                    Job job = backgroundJobs.get(i);
 
-	                    if (!job.process.isAlive()) {
-	                        continue;
-	                    }
-
 	                    char marker = ' ';
+
 	                    if (size == 1) {
 	                        marker = '+';
 	                    } else if (i == size - 1) {
@@ -209,13 +203,35 @@ public class Main {
 	                        marker = '-';
 	                    }
 
-	                    System.out.printf(
-	                        "[%d]%c  Running                 %s%n",
-	                        job.id,
-	                        marker,
-	                        job.commandLine
-	                    );
+	                    if (job.process.isAlive()) {
+
+	                        System.out.printf(
+	                            "[%d]%c  Running                 %s%n",
+	                            job.id,
+	                            marker,
+	                            job.commandLine
+	                        );
+
+	                    } else {
+
+	                        String cmd = job.commandLine;
+
+	                        if (cmd.endsWith(" &")) {
+	                            cmd = cmd.substring(0, cmd.length() - 2);
+	                        }
+
+	                        System.out.printf(
+	                            "[%d]%c  Done                    %s%n",
+	                            job.id,
+	                            marker,
+	                            cmd
+	                        );
+
+	                        job.doneDisplayed = true;
+	                    }
 	                }
+
+	                backgroundJobs.removeIf(job -> job.doneDisplayed);
 	            }
 	            
 	            //handle external programs
