@@ -4,13 +4,18 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 
 public class Main {
+    // List to keep track of running background processes
+    private static final List<Process> backgroundProcesses = new ArrayList<>();
+
     public static void main(String[] args) throws Exception {
         // TODO: Uncomment the code below to pass the first stage
     	Scanner sc = new Scanner(System.in);
-    	// Updated builtins list to include jobs
     	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
     	
     	while(true) {
+            // Clean up any background processes that have finished before printing the prompt
+            backgroundProcesses.removeIf(p -> !p.isAlive());
+
     		System.out.print("$ ");
     		System.out.flush();
             
@@ -179,7 +184,12 @@ public class Main {
 
 	            // handle jobs command
 	            else if(command.equals("jobs")) {
-	            	// Basic execution handling required for the jobs registration stage
+                    // Filter and show active background processes
+                    for (Process p : backgroundProcesses) {
+                        if (p.isAlive()) {
+                            System.out.println(p.pid() + ": Running");
+                        }
+                    }
 	            }
 	            
 	            //handle external programs
@@ -187,7 +197,6 @@ public class Main {
 	            	String executablePath = getPath(command);
 	            	
 	            	if(executablePath != null) {
-	            		// Check if the command should run in the background
 	            		boolean background = false;
 	            		if (argsList.size() > 1 && argsList.get(argsList.size() - 1).equals("&")) {
 	            			background = true;
@@ -220,7 +229,10 @@ public class Main {
 	            		Process process = pb.start();
 	            		if (!background) {
 	            			process.waitFor();
-	            		}
+	            		} else {
+                            // Store the background process handle to track it
+                            backgroundProcesses.add(process);
+                        }
 	            	} else {
 	            		// Print command error tracking to stderr
 	            		System.err.println(command+": command not found");
