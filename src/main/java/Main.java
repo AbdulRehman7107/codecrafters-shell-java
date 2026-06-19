@@ -29,19 +29,7 @@ public class Main {
     	while(true) {
             // --- NEXT PART: Reaping Before Each Prompt ---
             // Check all background jobs to see if any have exited since the last interaction
-            Iterator<Job> it = backgroundJobs.iterator();
-            while (it.hasNext()) {
-                Job job = it.next();
-                if (!job.process.isAlive()) {
-                    String cmd = job.commandLine;
-                    if (cmd.endsWith(" &")) {
-                        cmd = cmd.substring(0, cmd.length() - 2);
-                    }
-                    // Print the Done line right before rendering the new prompt
-                    System.out.printf("[%d]  Done                    %s%n", job.id, cmd);
-                    it.remove();
-                }
-            }
+    		reapCompletedJobs();
             // ----------------------------------------------
 
     		System.out.print("$ ");
@@ -385,5 +373,47 @@ public class Main {
     		}
     	}
     	return null;
+    }
+    private static void reapCompletedJobs() {
+
+        int size = backgroundJobs.size();
+
+        Iterator<Job> it = backgroundJobs.iterator();
+        int index = 0;
+
+        while (it.hasNext()) {
+
+            Job job = it.next();
+
+            if (!job.process.isAlive()) {
+
+                char marker = ' ';
+
+                if (size == 1) {
+                    marker = '+';
+                } else if (index == size - 1) {
+                    marker = '+';
+                } else if (index == size - 2) {
+                    marker = '-';
+                }
+
+                String cmd = job.commandLine;
+
+                if (cmd.endsWith(" &")) {
+                    cmd = cmd.substring(0, cmd.length() - 2);
+                }
+
+                System.out.printf(
+                    "[%d]%c  Done                    %s%n",
+                    job.id,
+                    marker,
+                    cmd
+                );
+
+                it.remove();
+            }
+
+            index++;
+        }
     }
 }
