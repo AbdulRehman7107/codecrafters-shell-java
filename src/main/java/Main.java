@@ -48,12 +48,18 @@ public class Main {
     			argsList.remove(redirectIndex);
     		}
 
-    		// Check for stderr redirection operator (2>)
+    		// Check for stderr redirection operator (2>) or append operator (2>>)
     		String errorFile = null;
+    		boolean errAppendMode = false;
     		int errRedirectIndex = -1;
     		for (int i = 0; i < argsList.size(); i++) {
-    			if (argsList.get(i).equals("2>")) {
+    			if (argsList.get(i).equals("2>>")) {
     				errRedirectIndex = i;
+    				errAppendMode = true;
+    				break;
+    			} else if (argsList.get(i).equals("2>")) {
+    				errRedirectIndex = i;
+    				errAppendMode = false;
     				break;
     			}
     		}
@@ -89,7 +95,8 @@ public class Main {
     			if (file.getParentFile() != null) {
     				file.getParentFile().mkdirs();
     			}
-    			fileErr = new PrintStream(file);
+    			// Pass errAppendMode boolean to the file stream to handle append vs overwrite flags for errors
+    			fileErr = new PrintStream(new FileOutputStream(file, errAppendMode));
     			System.setErr(fileErr);
     		}
     		
@@ -188,7 +195,12 @@ public class Main {
 	            		}
 
 	            		if (errorFile != null) {
-	            			pb.redirectError(new File(errorFile));
+	            			if (errAppendMode) {
+	            				// Use appendTo for standard error stream when flagged
+	            				pb.redirectError(ProcessBuilder.Redirect.appendTo(new File(errorFile)));
+	            			} else {
+	            				pb.redirectError(new File(errorFile));
+	            			}
 	            		} else {
 	            			pb.redirectError(ProcessBuilder.Redirect.INHERIT);
 	            		}
