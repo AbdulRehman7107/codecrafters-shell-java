@@ -16,24 +16,41 @@ public class Main {
     			continue;
     		}
     		
+    		//Parse the input string into arguments properly handling single quotes
+    		List<String> argsList = parseArgument(string);
+    		if(string.isEmpty()) {
+    			continue;
+    		}
+    		
+    		String command = argsList.get(0);
+    		
+    		//handle exit command
             if(string.equals("exit")) {
             	break;
             }
             
+            //handle echo command
             else if(string.startsWith("echo")) {
-            	String result = string.substring(5);
-            	System.out.println(result);
+            	StringBuilder sb = new StringBuilder();
+            	for(int i=1; i< argsList.size();i++) {
+            		sb.append(argsList.get(i));
+            		if(i< argsList.size()-1) {
+            			sb.append(" ");
+            		}
+            	}
+            	System.out.println(sb.toString());
             }
             
+            //handle pwd command
             else if (string.equals("pwd")) {
                
                 String currentDir = System.getProperty("user.dir");
                 System.out.println(currentDir);
             }
             
-            //handle cd
+            //handle cd command
             else if(string.startsWith("cd")) {
-            	String pathArg = string.substring(3).trim();
+            	String pathArg = argsList.size() > 1? argsList.get(1) : "";
             	File newDir;
             	
             	if(pathArg.startsWith("/")) {
@@ -66,8 +83,9 @@ public class Main {
             	}
             }
             
+            // handle type command
             else if(string.startsWith("type")) {
-            	String arg = string.substring(5).trim();
+            	String arg = argsList.size()> 1? argsList.get(1):"";
             	
             	if(builtins.contains(arg)) {
             		System.out.println(arg+" is a shell builtin");
@@ -80,21 +98,24 @@ public class Main {
                 	}
             	}
             }
+            
+            //handle external programs
             else {
-            	String[] inputParts = string.split(" ");
-            	String command = inputParts[0];
+//            	String[] inputParts = string.split(" ");
+//            	String command = inputParts[0];
             	
             	String executablePath = getPath(command);
             	
             	if(executablePath != null) {
-            		List<String> commandList = new ArrayList<>();
-            		commandList.add(command);
+//            		List<String> commandList = new ArrayList<>();
+//            		commandList.add(command);
+//            		
+//            		for(int i=1; i<inputParts.length; i++) {
+//            			commandList.add(inputParts[i]);
+//            		}
             		
-            		for(int i=1; i<inputParts.length; i++) {
-            			commandList.add(inputParts[i]);
-            		}
-            		
-            		ProcessBuilder pb =new ProcessBuilder(commandList);
+            		ProcessBuilder pb =new ProcessBuilder(argsList);
+            		pb.directory(new File(System.getProperty("user.dir")));
             		pb.inheritIO();
             		
             		Process process = pb.start();
@@ -104,6 +125,49 @@ public class Main {
             	}
             }
     	}  
+    }
+    
+    //helper method to parse strings supporting single quotes and concatenation
+    private static List<String> parseArgument(String string){
+    	List<String> list = new ArrayList<>();
+    	StringBuilder currentArg = new StringBuilder();
+    	boolean inSingleQuotes = false;
+    	boolean hasContent = false; //tracks if we have started building an argument
+    	
+    	for(int i=0; i< string.length();i++) {
+    		char c = string.charAt(i);
+    		
+    		if(inSingleQuotes) {
+    			if(c== '\'') {
+    				inSingleQuotes = false; //close quote
+    			}
+    			else {
+    				currentArg.append(c);
+    			}
+    			hasContent = true;
+    		}
+    		else {
+    			if(c == '\'') {
+    				inSingleQuotes = true;//open quote
+    				hasContent=true;
+    			}
+    			else if(c == ' ') {
+    				if(hasContent) {
+    					list.add(currentArg.toString());
+    					currentArg.setLength(0);
+    					hasContent= false;
+    				}
+    			} else {
+    				currentArg.append(c);
+    				hasContent = true;
+    			}
+    		}
+    	}
+    	
+    	if(hasContent) {
+    		list.add(currentArg.toString());
+    	}
+    	return list;
     }
     
     private static String getPath(String command) {
