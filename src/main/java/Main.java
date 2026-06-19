@@ -25,8 +25,15 @@ public class Main {
     	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
     	
     	while(true) {
-            // Clean up completed background processes before displaying the next prompt
-            backgroundJobs.removeIf(job -> !job.process.isAlive());
+            // Inform the user about any jobs that finished since the last command execution
+            Iterator<Job> it = backgroundJobs.iterator();
+            while (it.hasNext()) {
+                Job job = it.next();
+                if (!job.process.isAlive()) {
+                    System.out.println("[" + job.id + "]+  Done                    " + job.commandLine);
+                    it.remove();
+                }
+            }
 
     		System.out.print("$ ");
     		System.out.flush();
@@ -185,7 +192,7 @@ public class Main {
 	            else if(command.equals("jobs")) {
                     for (Job job : backgroundJobs) {
                         if (job.process.isAlive()) {
-                            System.out.println("[" + job.id + "] " + job.process.pid() + " Running " + job.commandLine);
+                            System.out.println("[" + job.id + "]+  Running                 " + job.commandLine);
                         }
                     }
 	            }
