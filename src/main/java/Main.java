@@ -40,6 +40,23 @@ public class Main {
     			argsList.remove(redirectIndex + 1);
     			argsList.remove(redirectIndex);
     		}
+
+    		// Check for stderr redirection operator (2>)
+    		String errorFile = null;
+    		int errRedirectIndex = -1;
+    		for (int i = 0; i < argsList.size(); i++) {
+    			if (argsList.get(i).equals("2>")) {
+    				errRedirectIndex = i;
+    				break;
+    			}
+    		}
+
+    		// If a stderr redirection operator is found, extract the file and strip them from args
+    		if (errRedirectIndex != -1 && errRedirectIndex + 1 < argsList.size()) {
+    			errorFile = argsList.get(errRedirectIndex + 1);
+    			argsList.remove(errRedirectIndex + 1);
+    			argsList.remove(errRedirectIndex);
+    		}
     		
     		String command = argsList.get(0);
     		
@@ -54,6 +71,18 @@ public class Main {
     			}
     			fileOut = new PrintStream(file);
     			System.setOut(fileOut);
+    		}
+
+    		// Save the original stderr stream to restore it later for builtins
+    		PrintStream originalErr = System.err;
+    		PrintStream fileErr = null;
+    		if (errorFile != null) {
+    			File file = new File(errorFile);
+    			if (file.getParentFile() != null) {
+    				file.getParentFile().mkdirs();
+    			}
+    			fileErr = new PrintStream(file);
+    			System.setErr(fileErr);
     		}
     		
     		try {
@@ -141,17 +170,22 @@ public class Main {
 	            		pb.directory(new File(System.getProperty("user.dir")));
 	            		
 	            		if (outputFile != null) {
-	            			// If redirecting, dump standard output to the file but leave standard error on the console
 	            			pb.redirectOutput(new File(outputFile));
-	            			pb.redirectError(ProcessBuilder.Redirect.INHERIT);
 	            		} else {
-	            			pb.inheritIO();
+	            			pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+	            		}
+
+	            		if (errorFile != null) {
+	            			// If redirecting stderr, route it to the error file
+	            			pb.redirectError(new File(errorFile));
+	            		} else {
+	            			pb.redirectError(ProcessBuilder.Redirect.INHERIT);
 	            		}
 	            		
 	            		Process process = pb.start();
 	            		process.waitFor();
 	            	} else {
-	            		// Print command error tracking to stderr to keep it isolated from file routes
+	            		// Print command error tracking to stderr
 	            		System.err.println(command+": command not found");
 	            	}
 	            }
@@ -160,6 +194,11 @@ public class Main {
     			if (fileOut != null) {
     				fileOut.close();
     				System.setOut(originalOut);
+    			}
+    			// Always clean up and restore System.err back to normal terminal output
+    			if (fileErr != null) {
+    				fileErr.close();
+    				System.setErr(originalErr);
     			}
     		}
     	}  
