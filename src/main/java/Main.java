@@ -185,6 +185,7 @@ public class Main {
 	            else if(command.equals("jobs")) {
                     for (Job job : backgroundJobs) {
                         if (job.process.isAlive()) {
+                            // Exact space-separated receipt matching tester expectation
                             System.out.println("[" + job.id + "] " + job.process.pid() + " Running " + job.commandLine);
                         }
                     }
