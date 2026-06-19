@@ -26,7 +26,7 @@ public class Main {
     	
     	while(true) {
             // Silently clean up completed background processes before displaying the next prompt
-            backgroundJobs.removeIf(job -> !job.process.isAlive());
+            //backgroundJobs.removeIf(job -> !job.process.isAlive());
 
     		System.out.print("$ ");
     		System.out.flush();
@@ -183,12 +183,32 @@ public class Main {
 
 	            // handle jobs command
 	            else if(command.equals("jobs")) {
-                    for (Job job : backgroundJobs) {
-                        if (job.process.isAlive()) {
-                            // Exact space-separated receipt matching tester expectation
-                            System.out.println("[" + job.id + "] " + job.process.pid() + " Running " + job.commandLine);
-                        }
-                    }
+	                int size = backgroundJobs.size();
+
+	                for (int i = 0; i < size; i++) {
+	                    Job job = backgroundJobs.get(i);
+
+	                    if (!job.process.isAlive()) {
+	                        continue;
+	                    }
+
+	                    char marker = ' ';
+
+	                    if (size == 1) {
+	                        marker = '+';
+	                    } else if (i == size - 1) {
+	                        marker = '+';
+	                    } else if (i == size - 2) {
+	                        marker = '-';
+	                    }
+
+	                    System.out.printf(
+	                        "[%d]%c  Running                 %s%n",
+	                        job.id,
+	                        marker,
+	                        job.commandLine
+	                    );
+	                }
 	            }
 	            
 	            //handle external programs
