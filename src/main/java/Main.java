@@ -27,8 +27,22 @@ public class Main {
     	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
     	
     	while(true) {
-            // Silently clean up completed background processes before displaying the next prompt
-            //backgroundJobs.removeIf(job -> !job.process.isAlive());
+            // --- NEXT PART: Reaping Before Each Prompt ---
+            // Check all background jobs to see if any have exited since the last interaction
+            Iterator<Job> it = backgroundJobs.iterator();
+            while (it.hasNext()) {
+                Job job = it.next();
+                if (!job.process.isAlive()) {
+                    String cmd = job.commandLine;
+                    if (cmd.endsWith(" &")) {
+                        cmd = cmd.substring(0, cmd.length() - 2);
+                    }
+                    // Print the Done line right before rendering the new prompt
+                    System.out.printf("[%d]  Done                    %s%n", job.id, cmd);
+                    it.remove();
+                }
+            }
+            // ----------------------------------------------
 
     		System.out.print("$ ");
     		System.out.flush();
@@ -184,7 +198,6 @@ public class Main {
 	            }
 
 	            // handle jobs command
-	         // handle jobs command
 	            else if(command.equals("jobs")) {
 
 	                int size = backgroundJobs.size();
