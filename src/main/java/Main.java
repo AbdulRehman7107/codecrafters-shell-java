@@ -4,17 +4,36 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 
 public class Main {
-    // List to keep track of active background processes
-    private static final List<Process> backgroundProcesses = new ArrayList<>();
+    // A clean helper class to store job details
+    private static class Job {
+        int id;
+        Process process;
+        String commandLine;
+
+        Job(int id, Process process, String commandLine) {
+            this.id = id;
+            this.process = process;
+            this.commandLine = commandLine;
+        }
+    }
+
+    private static final List<Job> backgroundJobs = new ArrayList<>();
+    private static int nextJobId = 1;
 
     public static void main(String[] args) throws Exception {
-        // TODO: Uncomment the code below to pass the first stage
     	Scanner sc = new Scanner(System.in);
     	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
     	
     	while(true) {
-            // Clean up completed background processes before displaying prompt
-            backgroundProcesses.removeIf(p -> !p.isAlive());
+            // Inform the user about any jobs that finished since the last command execution
+            Iterator<Job> it = backgroundJobs.iterator();
+            while (it.hasNext()) {
+                Job job = it.next();
+                if (!job.process.isAlive()) {
+                    System.out.println("[" + job.id + "]+  Done                    " + job.commandLine);
+                    it.remove();
+                }
+            }
 
     		System.out.print("$ ");
     		System.out.flush();
@@ -23,6 +42,9 @@ public class Main {
     		if(string.isEmpty()) {
     			continue;
     		}
+    		
+    		// Keep a copy of the raw command line for jobs logging
+    		String rawCommandLine = string;
     		
     		//Parse the input string into arguments properly handling single quotes
     		List<String> argsList = parseArgument(string);
@@ -49,7 +71,6 @@ public class Main {
     		// If a redirection operator is found, extract the file and strip them from args
     		if (redirectIndex != -1 && redirectIndex + 1 < argsList.size()) {
     			outputFile = argsList.get(redirectIndex + 1);
-    			// Remove both the operator and the filename from our execution arguments
     			argsList.remove(redirectIndex + 1);
     			argsList.remove(redirectIndex);
     		}
@@ -84,11 +105,9 @@ public class Main {
     		PrintStream fileOut = null;
     		if (outputFile != null) {
     			File file = new File(outputFile);
-    			// Ensure parent directories exist if specified
     			if (file.getParentFile() != null) {
     				file.getParentFile().mkdirs();
     			}
-    			// Pass appendMode boolean to the file stream to handle append vs overwrite flags
     			fileOut = new PrintStream(new FileOutputStream(file, appendMode));
     			System.setOut(fileOut);
     		}
@@ -101,7 +120,6 @@ public class Main {
     			if (file.getParentFile() != null) {
     				file.getParentFile().mkdirs();
     			}
-    			// Pass errAppendMode boolean to the file stream to handle append vs overwrite flags for errors
     			fileErr = new PrintStream(new FileOutputStream(file, errAppendMode));
     			System.setErr(fileErr);
     		}
@@ -126,7 +144,6 @@ public class Main {
 	            
 	            //handle pwd command
 	            else if (command.equals("pwd")) {
-	               
 	                String currentDir = System.getProperty("user.dir");
 	                System.out.println(currentDir);
 	            }
@@ -135,28 +152,18 @@ public class Main {
 	            else if(command.equals("cd")) {
 	            	String pathArg = argsList.size() > 1? argsList.get(1) : "";
 	            	File newDir;
-	            	
 	            	if(pathArg.startsWith("/")) {
 	            		newDir = new File(pathArg);
-	            	} 
-	            	
-	            	else if(pathArg.equals("~")) {
+	            	} else if(pathArg.equals("~")) {
 	            		String homeDir = System.getenv("HOME");
 	            		newDir = new File(homeDir);
-	            	}
-	            	
-	            	else {
+	            	} else {
 	            		newDir = new File(System.getProperty("user.dir"),pathArg);
-	            		
 	            	}
-	            	
 	            	newDir = newDir.getAbsoluteFile();
-	            	
 	            	try {
 	            		newDir = newDir.getCanonicalFile();
-	            	}catch(Exception a) {
-	            		
-	            	}
+	            	}catch(Exception a) {}
 	            	
 	            	if(newDir.exists() && newDir.isDirectory()) {
 	            		System.setProperty("user.dir", newDir.getAbsolutePath());
@@ -169,7 +176,6 @@ public class Main {
 	            // handle type command
 	            else if(command.equals("type")) {
 	            	String arg = argsList.size()> 1? argsList.get(1):"";
-	            	
 	            	if(builtins.contains(arg)) {
 	            		System.out.println(arg+" is a shell builtin");
 	            	} else {
@@ -184,10 +190,9 @@ public class Main {
 
 	            // handle jobs command
 	            else if(command.equals("jobs")) {
-                    for (int i = 0; i < backgroundProcesses.size(); i++) {
-                        Process p = backgroundProcesses.get(i);
-                        if (p.isAlive()) {
-                            System.out.println("[" + (i + 1) + "] " + p.pid() + " Running");
+                    for (Job job : backgroundJobs) {
+                        if (job.process.isAlive()) {
+                            System.out.println("[" + job.id + "]+  Running                 " + job.commandLine);
                         }
                     }
 	            }
@@ -230,23 +235,19 @@ public class Main {
 	            		if (!background) {
 	            			process.waitFor();
 	            		} else {
-                            // Add to tracker list
-                            backgroundProcesses.add(process);
-                            // Print background initialization receipt expected by the tester
-                            System.out.println("[" + backgroundProcesses.size() + "] " + process.pid());
+                            Job job = new Job(nextJobId++, process, rawCommandLine);
+                            backgroundJobs.add(job);
+                            System.out.println("[" + job.id + "] " + process.pid());
                         }
 	            	} else {
-	            		// Print command error tracking to stderr
 	            		System.err.println(command+": command not found");
 	            	}
 	            }
     		} finally {
-    			// Always clean up and restore System.out back to normal terminal output
     			if (fileOut != null) {
     				fileOut.close();
     				System.setOut(originalOut);
     			}
-    			// Always clean up and restore System.err back to normal terminal output
     			if (fileErr != null) {
     				fileErr.close();
     				System.setErr(originalErr);
@@ -255,40 +256,36 @@ public class Main {
     	}  
     }
     
-    //helper method to parse strings supporting single quotes and concatenation
     private static List<String> parseArgument(String string){
     	List<String> list = new ArrayList<>();
     	StringBuilder currentArg = new StringBuilder();
     	boolean inSingleQuotes = false;
     	boolean inDoubleQuotes = false;
-    	boolean hasContent = false; //tracks if we have started building an argument
+    	boolean hasContent = false;
     	
     	for(int i=0; i< string.length();i++) {
     		char c = string.charAt(i);
     		
     		if(inSingleQuotes) {
     			if(c== '\'') {
-    				inSingleQuotes = false; //close quote
-    			}
-    			else {
+    				inSingleQuotes = false;
+    			} else {
     				currentArg.append(c);
     			}
     			hasContent = true;
     		}
     		else if(inDoubleQuotes) {
     			if(c == '"') {
-    				inDoubleQuotes = false;//close double
-    			}
-    			else if(c == '\\' && i + 1 < string.length()) {
+    				inDoubleQuotes = false;
+    			} else if(c == '\\' && i + 1 < string.length()) {
     				char next = string.charAt(i + 1);
     				if(next == '"' || next == '\\' || next == '$' || next == '`') {
     					currentArg.append(next);
-    					i++; // skip the escaped character
+    					i++;
     				} else {
-    					currentArg.append(c); // treat backslash literally
+    					currentArg.append(c);
     				}
-    			}
-    			else {
+    			} else {
     				currentArg.append(c);
     			}
     			hasContent = true;
@@ -300,16 +297,13 @@ public class Main {
     					i++;
     					hasContent = true;
     				}
-    			}
-    			else if(c == '\'') {
-    				inSingleQuotes = true;//open quote
+    			} else if(c == '\'') {
+    				inSingleQuotes = true;
     				hasContent=true;
-    			}
-    			else if(c== '"') {
+    			} else if(c== '"') {
     				inDoubleQuotes = true;
     				hasContent= true;
-    			}
-    			else if(c == ' ') {
+    			} else if(c == ' ') {
     				if(hasContent) {
     					list.add(currentArg.toString());
     					currentArg.setLength(0);
@@ -333,9 +327,7 @@ public class Main {
     	if(pathEnv == null) {
     		return null;
     	}
-    	
     	String[] directories = pathEnv.split(File.pathSeparator);
-    	
     	for(String directory : directories) {
     		File file = new File(directory, command);
     		if(file.exists() && file.canExecute()) {
