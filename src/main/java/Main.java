@@ -7,7 +7,8 @@ public class Main {
     public static void main(String[] args) throws Exception {
         // TODO: Uncomment the code below to pass the first stage
     	Scanner sc = new Scanner(System.in);
-    	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd");
+    	// Updated builtins list to include jobs
+    	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
     	
     	while(true) {
     		System.out.print("$ ");
@@ -175,13 +176,25 @@ public class Main {
 	                	}
 	            	}
 	            }
+
+	            // handle jobs command
+	            else if(command.equals("jobs")) {
+	            	// Basic execution handling required for the jobs registration stage
+	            }
 	            
 	            //handle external programs
 	            else {
 	            	String executablePath = getPath(command);
 	            	
 	            	if(executablePath != null) {
-	            		ProcessBuilder pb =new ProcessBuilder(argsList);
+	            		// Check if the command should run in the background
+	            		boolean background = false;
+	            		if (argsList.size() > 1 && argsList.get(argsList.size() - 1).equals("&")) {
+	            			background = true;
+	            			argsList.remove(argsList.size() - 1);
+	            		}
+
+	            		ProcessBuilder pb = new ProcessBuilder(argsList);
 	            		pb.directory(new File(System.getProperty("user.dir")));
 	            		
 	            		if (outputFile != null) {
@@ -196,7 +209,6 @@ public class Main {
 
 	            		if (errorFile != null) {
 	            			if (errAppendMode) {
-	            				// Use appendTo for standard error stream when flagged
 	            				pb.redirectError(ProcessBuilder.Redirect.appendTo(new File(errorFile)));
 	            			} else {
 	            				pb.redirectError(new File(errorFile));
@@ -206,7 +218,9 @@ public class Main {
 	            		}
 	            		
 	            		Process process = pb.start();
-	            		process.waitFor();
+	            		if (!background) {
+	            			process.waitFor();
+	            		}
 	            	} else {
 	            		// Print command error tracking to stderr
 	            		System.err.println(command+": command not found");
