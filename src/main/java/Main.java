@@ -1,5 +1,6 @@
 import java.util.*;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.PrintStream;
 
 public class Main {
@@ -23,12 +24,18 @@ public class Main {
     			continue;
     		}
     		
-    		// Check for stdout redirection operators (> or 1>)
+    		// Check for stdout redirection operators (> or 1>) or append operators (>> or 1>>)
     		String outputFile = null;
+    		boolean appendMode = false;
     		int redirectIndex = -1;
     		for (int i = 0; i < argsList.size(); i++) {
-    			if (argsList.get(i).equals(">") || argsList.get(i).equals("1>")) {
+    			if (argsList.get(i).equals(">>") || argsList.get(i).equals("1>>")) {
     				redirectIndex = i;
+    				appendMode = true;
+    				break;
+    			} else if (argsList.get(i).equals(">") || argsList.get(i).equals("1>")) {
+    				redirectIndex = i;
+    				appendMode = false;
     				break;
     			}
     		}
@@ -69,7 +76,8 @@ public class Main {
     			if (file.getParentFile() != null) {
     				file.getParentFile().mkdirs();
     			}
-    			fileOut = new PrintStream(file);
+    			// Pass appendMode boolean to the file stream to handle append vs overwrite flags
+    			fileOut = new PrintStream(new FileOutputStream(file, appendMode));
     			System.setOut(fileOut);
     		}
 
@@ -170,13 +178,16 @@ public class Main {
 	            		pb.directory(new File(System.getProperty("user.dir")));
 	            		
 	            		if (outputFile != null) {
-	            			pb.redirectOutput(new File(outputFile));
+	            			if (appendMode) {
+	            				pb.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(outputFile)));
+	            			} else {
+	            				pb.redirectOutput(new File(outputFile));
+	            			}
 	            		} else {
 	            			pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 	            		}
 
 	            		if (errorFile != null) {
-	            			// If redirecting stderr, route it to the error file
 	            			pb.redirectError(new File(errorFile));
 	            		} else {
 	            			pb.redirectError(ProcessBuilder.Redirect.INHERIT);
