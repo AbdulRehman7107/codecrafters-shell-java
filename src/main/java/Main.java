@@ -132,6 +132,7 @@ public class Main {
     	List<String> list = new ArrayList<>();
     	StringBuilder currentArg = new StringBuilder();
     	boolean inSingleQuotes = false;
+    	boolean inDoubleQuotes = false;
     	boolean hasContent = false; //tracks if we have started building an argument
     	
     	for(int i=0; i< string.length();i++) {
@@ -146,10 +147,22 @@ public class Main {
     			}
     			hasContent = true;
     		}
+    		else if(inDoubleQuotes) {
+    			if(c == '"') {
+    				inDoubleQuotes = false;//close double
+    			}else {
+    				currentArg.append(c);
+    			}
+    			hasContent = true;
+    		}
     		else {
     			if(c == '\'') {
     				inSingleQuotes = true;//open quote
     				hasContent=true;
+    			}
+    			else if(c== '"') {
+    				inDoubleQuotes = true;
+    				hasContent= true;
     			}
     			else if(c == ' ') {
     				if(hasContent) {
