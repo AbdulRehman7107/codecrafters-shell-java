@@ -25,8 +25,16 @@ public class Main {
     	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
     	
     	while(true) {
-            // Silently clean up completed background processes before displaying the next prompt
-            //backgroundJobs.removeIf(job -> !job.process.isAlive());
+            // Reap and notify completed background processes before displaying the next prompt
+            Iterator<Job> it = backgroundJobs.iterator();
+            while (it.hasNext()) {
+                Job job = it.next();
+                if (!job.process.isAlive()) {
+                    // Cleanly print out the termination status matching standard shell expectations
+                    System.out.printf("[%d]  Done                    %s%n", job.id, job.commandLine);
+                    it.remove();
+                }
+            }
 
     		System.out.print("$ ");
     		System.out.flush();
@@ -193,7 +201,6 @@ public class Main {
 	                    }
 
 	                    char marker = ' ';
-
 	                    if (size == 1) {
 	                        marker = '+';
 	                    } else if (i == size - 1) {
