@@ -306,11 +306,8 @@ public class Main {
 
         String[] parts = commandLine.split("\\|", 2);
 
-        String leftCmd = parts[0].trim();
-        String rightCmd = parts[1].trim();
-
-        List<String> leftArgs = parseArgument(leftCmd);
-        List<String> rightArgs = parseArgument(rightCmd);
+        List<String> leftArgs = parseArgument(parts[0].trim());
+        List<String> rightArgs = parseArgument(parts[1].trim());
 
         ProcessBuilder pb1 = new ProcessBuilder(leftArgs);
         pb1.directory(new File(System.getProperty("user.dir")));
@@ -326,47 +323,67 @@ public class Main {
                 var in = p1.getInputStream();
                 var out = p2.getOutputStream()
             ) {
-                in.transferTo(out);
+                byte[] buffer = new byte[8192];
+                int n;
+
+                while ((n = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, n);
+                    out.flush(); // IMPORTANT
+                }
+
                 out.close();
+
             } catch (Exception ignored) {
             }
         });
 
+        pipeThread.setDaemon(true);
         pipeThread.start();
 
-        Thread outputThread = new Thread(() -> {
+        Thread stdoutThread = new Thread(() -> {
             try {
-                p2.getInputStream().transferTo(System.out);
+                var in = p2.getInputStream();
+
+                byte[] buffer = new byte[8192];
+                int n;
+
+                while ((n = in.read(buffer)) != -1) {
+                    System.out.write(buffer, 0, n);
+                    System.out.flush(); // IMPORTANT
+                }
+
             } catch (Exception ignored) {
             }
         });
 
-        Thread errorThread1 = new Thread(() -> {
+        stdoutThread.start();
+
+        Thread stderr1 = new Thread(() -> {
             try {
                 p1.getErrorStream().transferTo(System.err);
             } catch (Exception ignored) {
             }
         });
 
-        Thread errorThread2 = new Thread(() -> {
+        Thread stderr2 = new Thread(() -> {
             try {
                 p2.getErrorStream().transferTo(System.err);
             } catch (Exception ignored) {
             }
         });
 
-        outputThread.start();
-        errorThread1.start();
-        errorThread2.start();
+        stderr1.start();
+        stderr2.start();
 
-        p1.waitFor();
-        pipeThread.join();
-
+        // Wait ONLY for the last command in pipeline
         p2.waitFor();
 
-        outputThread.join();
-        errorThread1.join();
-        errorThread2.join();
+        stdoutThread.join();
+
+        // If head exits first, tail -f must be terminated
+        if (p1.isAlive()) {
+            p1.destroy();
+        }
     }
     
     private static List<String> parseArgument(String string){
