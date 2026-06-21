@@ -18,6 +18,15 @@ public class Main {
 	        this.commandLine = commandLine;
 	    }
 	}
+	
+	private static boolean isBuiltin(String cmd) {
+	    return cmd.equals("echo")
+	        || cmd.equals("type")
+	        || cmd.equals("pwd")
+	        || cmd.equals("cd")
+	        || cmd.equals("exit")
+	        || cmd.equals("jobs");
+	}
 
     private static final List<Job> backgroundJobs = new ArrayList<>();
 //    private static int nextJobId = 1;
@@ -46,7 +55,7 @@ public class Main {
     		//Parse the input string into arguments properly handling single quotes
     		List<String> argsList = parseArgument(string);
     		if (string.contains("|")) {
-    		    executePipeline(string);
+    		    executePipelineWithBuiltins(string, builtins);
     		    continue;
     		}
     		if(argsList.isEmpty()) {
@@ -300,6 +309,128 @@ public class Main {
     			}
     		}
     	}  
+    }
+    
+    private static void executePipelineWithBuiltins(
+            String commandLine,
+            List<String> builtins) throws Exception {
+
+        String[] parts = commandLine.split("\\|", 2);
+
+        String leftPart = parts[0].trim();
+        String rightPart = parts[1].trim();
+
+        List<String> leftArgs = parseArgument(leftPart);
+        List<String> rightArgs = parseArgument(rightPart);
+
+        String leftCmd = leftArgs.get(0);
+        String rightCmd = rightArgs.get(0);
+
+        /*
+         * CASE 1
+         * builtin | external
+         *
+         * echo apple | wc
+         */
+        if (isBuiltin(leftCmd) && !isBuiltin(rightCmd)) {
+
+            StringBuilder builtinOutput = new StringBuilder();
+
+            if (leftCmd.equals("echo")) {
+
+                for (int i = 1; i < leftArgs.size(); i++) {
+
+                    if (i > 1) {
+                        builtinOutput.append(" ");
+                    }
+
+                    builtinOutput.append(leftArgs.get(i));
+                }
+
+                builtinOutput.append("\n");
+            }
+
+            ProcessBuilder pb =
+                new ProcessBuilder(rightArgs);
+
+            pb.directory(
+                new File(System.getProperty("user.dir"))
+            );
+
+            Process process = pb.start();
+
+            process.getOutputStream()
+                   .write(builtinOutput.toString().getBytes());
+
+            process.getOutputStream().close();
+
+            process.getInputStream()
+                   .transferTo(System.out);
+
+            process.waitFor();
+
+            return;
+        }
+
+        /*
+         * CASE 2
+         * external | builtin
+         *
+         * ls | type exit
+         */
+        if (!isBuiltin(leftCmd) && isBuiltin(rightCmd)) {
+
+            ProcessBuilder pb =
+                new ProcessBuilder(leftArgs);
+
+            pb.directory(
+                new File(System.getProperty("user.dir"))
+            );
+
+            Process process = pb.start();
+
+            if (rightCmd.equals("type")) {
+
+                String arg =
+                    rightArgs.size() > 1
+                        ? rightArgs.get(1)
+                        : "";
+
+                if (builtins.contains(arg)) {
+
+                    System.out.println(
+                        arg + " is a shell builtin"
+                    );
+
+                } else {
+
+                    String path = getPath(arg);
+
+                    if (path != null) {
+
+                        System.out.println(
+                            arg + " is " + path
+                        );
+
+                    } else {
+
+                        System.out.println(
+                            arg + ": not found"
+                        );
+                    }
+                }
+            }
+
+            process.destroy();
+
+            return;
+        }
+
+        /*
+         * CASE 3
+         * external | external
+         */
+        executePipeline(commandLine);
     }
     
     private static void executePipeline(String commandLine) throws Exception {
