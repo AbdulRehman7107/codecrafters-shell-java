@@ -55,7 +55,18 @@ public class Main {
     		//Parse the input string into arguments properly handling single quotes
     		List<String> argsList = parseArgument(string);
     		if (string.contains("|")) {
-    		    executePipelineWithBuiltins(string, builtins);
+
+    		    String[] parts = string.split("\\|");
+
+    		    if (parts.length == 2) {
+    		        executePipelineWithBuiltins(
+    		            string,
+    		            builtins
+    		        );
+    		    } else {
+    		        executePipeline(string);
+    		    }
+
     		    continue;
     		}
     		if(argsList.isEmpty()) {
@@ -435,52 +446,81 @@ public class Main {
     
     private static void executePipeline(String commandLine) throws Exception {
 
-        String[] parts = commandLine.split("\\|", 2);
+        String[] parts = commandLine.split("\\|");
 
-        List<String> leftArgs = parseArgument(parts[0].trim());
-        List<String> rightArgs = parseArgument(parts[1].trim());
+        int n = parts.length;
 
-        ProcessBuilder pb1 = new ProcessBuilder(leftArgs);
-        pb1.directory(new File(System.getProperty("user.dir")));
+        List<Process> processes = new ArrayList<>();
 
-        ProcessBuilder pb2 = new ProcessBuilder(rightArgs);
-        pb2.directory(new File(System.getProperty("user.dir")));
+        for (int i = 0; i < n; i++) {
 
-        Process p1 = pb1.start();
-        Process p2 = pb2.start();
+            List<String> args =
+                parseArgument(parts[i].trim());
 
-        Thread pipeThread = new Thread(() -> {
-            try (
-                var in = p1.getInputStream();
-                var out = p2.getOutputStream()
-            ) {
-                byte[] buffer = new byte[8192];
-                int n;
+            ProcessBuilder pb =
+                new ProcessBuilder(args);
 
-                while ((n = in.read(buffer)) != -1) {
-                    out.write(buffer, 0, n);
-                    out.flush(); // IMPORTANT
+            pb.directory(
+                new File(System.getProperty("user.dir"))
+            );
+
+            processes.add(pb.start());
+        }
+
+        List<Thread> pipeThreads = new ArrayList<>();
+
+        for (int i = 0; i < n - 1; i++) {
+
+            Process current = processes.get(i);
+            Process next = processes.get(i + 1);
+
+            Thread t = new Thread(() -> {
+
+                try (
+                    var in = current.getInputStream();
+                    var out = next.getOutputStream()
+                ) {
+
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+
+                    while ((bytesRead = in.read(buffer)) != -1) {
+
+                        out.write(buffer, 0, bytesRead);
+                        out.flush();
+                    }
+
+                    out.close();
+
+                } catch (Exception ignored) {
                 }
+            });
 
-                out.close();
-
-            } catch (Exception ignored) {
-            }
-        });
-
-        pipeThread.setDaemon(true);
-        pipeThread.start();
+            t.start();
+            pipeThreads.add(t);
+        }
 
         Thread stdoutThread = new Thread(() -> {
+
             try {
-                var in = p2.getInputStream();
+
+                Process last =
+                    processes.get(processes.size() - 1);
 
                 byte[] buffer = new byte[8192];
-                int n;
+                int bytesRead;
 
-                while ((n = in.read(buffer)) != -1) {
-                    System.out.write(buffer, 0, n);
-                    System.out.flush(); // IMPORTANT
+                var in = last.getInputStream();
+
+                while ((bytesRead = in.read(buffer)) != -1) {
+
+                    System.out.write(
+                        buffer,
+                        0,
+                        bytesRead
+                    );
+
+                    System.out.flush();
                 }
 
             } catch (Exception ignored) {
@@ -489,31 +529,41 @@ public class Main {
 
         stdoutThread.start();
 
-        Thread stderr1 = new Thread(() -> {
-            try {
-                p1.getErrorStream().transferTo(System.err);
-            } catch (Exception ignored) {
-            }
-        });
+        List<Thread> stderrThreads = new ArrayList<>();
 
-        Thread stderr2 = new Thread(() -> {
-            try {
-                p2.getErrorStream().transferTo(System.err);
-            } catch (Exception ignored) {
-            }
-        });
+        for (Process p : processes) {
 
-        stderr1.start();
-        stderr2.start();
+            Thread t = new Thread(() -> {
 
-        // Wait ONLY for the last command in pipeline
-        p2.waitFor();
+                try {
+
+                    p.getErrorStream()
+                     .transferTo(System.err);
+
+                } catch (Exception ignored) {
+                }
+            });
+
+            t.start();
+            stderrThreads.add(t);
+        }
+
+        Process last =
+            processes.get(processes.size() - 1);
+
+        last.waitFor();
 
         stdoutThread.join();
 
-        // If head exits first, tail -f must be terminated
-        if (p1.isAlive()) {
-            p1.destroy();
+        for (Thread t : pipeThreads) {
+            t.join();
+        }
+
+        for (Process p : processes) {
+
+            if (p.isAlive()) {
+                p.destroy();
+            }
         }
     }
     
