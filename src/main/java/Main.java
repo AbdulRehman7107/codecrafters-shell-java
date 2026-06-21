@@ -4,7 +4,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 
 public class Main {
-    // A clean helper class to store job details
+    //helper class to store job detail
 	private static class Job {
 
 	    int id;
@@ -36,10 +36,8 @@ public class Main {
     	List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
     	
     	while(true) {
-            // --- NEXT PART: Reaping Before Each Prompt ---
-            // Check all background jobs to see if any have exited since the last interaction
+            
     		reapCompletedJobs();
-            // ----------------------------------------------
 
     		System.out.print("$ ");
     		System.out.flush();
@@ -49,10 +47,10 @@ public class Main {
     			continue;
     		}
     		
-    		// Keep a copy of the raw command line for jobs logging
+    		// copy of the raw command line for jobs logging
     		String rawCommandLine = string;
     		
-    		//Parse the input string into arguments properly handling single quotes
+    		//parse the input string into arguments properly handling single quotes
     		List<String> argsList = parseArgument(string);
     		if (string.contains("|")) {
 
@@ -73,7 +71,7 @@ public class Main {
     			continue;
     		}
     		
-    		// Check for stdout redirection operators (> or 1>) or append operators (>> or 1>>)
+    		//check for stdout redirection operators (> or 1>) or append operators (>> or 1>>)
     		String outputFile = null;
     		boolean appendMode = false;
     		int redirectIndex = -1;
@@ -89,14 +87,14 @@ public class Main {
     			}
     		}
     		
-    		// If a redirection operator is found, extract the file and strip them from args
+    		//if a redirection operator is found, extract the file and strip them from args
     		if (redirectIndex != -1 && redirectIndex + 1 < argsList.size()) {
     			outputFile = argsList.get(redirectIndex + 1);
     			argsList.remove(redirectIndex + 1);
     			argsList.remove(redirectIndex);
     		}
 
-    		// Check for stderr redirection operator (2>) or append operator (2>>)
+    		//check for stderr redirection operator (2>) or append operator (2>>)
     		String errorFile = null;
     		boolean errAppendMode = false;
     		int errRedirectIndex = -1;
@@ -112,7 +110,7 @@ public class Main {
     			}
     		}
 
-    		// If a stderr redirection operator is found, extract the file and strip them from args
+    		//if a stderr redirection operator is found, extract the file and strip them from args
     		if (errRedirectIndex != -1 && errRedirectIndex + 1 < argsList.size()) {
     			errorFile = argsList.get(errRedirectIndex + 1);
     			argsList.remove(errRedirectIndex + 1);
@@ -121,7 +119,7 @@ public class Main {
     		
     		String command = argsList.get(0);
     		
-    		// Save the original stdout stream to restore it later for builtins
+    		//save the original stdout stream to restore it later for builtins
     		PrintStream originalOut = System.out;
     		PrintStream fileOut = null;
     		if (outputFile != null) {
@@ -133,7 +131,7 @@ public class Main {
     			System.setOut(fileOut);
     		}
 
-    		// Save the original stderr stream to restore it later for builtins
+    		//save the original stderr stream to restore it later for builtins
     		PrintStream originalErr = System.err;
     		PrintStream fileErr = null;
     		if (errorFile != null) {
@@ -337,12 +335,7 @@ public class Main {
         String leftCmd = leftArgs.get(0);
         String rightCmd = rightArgs.get(0);
 
-        /*
-         * CASE 1
-         * builtin | external
-         *
-         * echo apple | wc
-         */
+        //case 1
         if (isBuiltin(leftCmd) && !isBuiltin(rightCmd)) {
 
             StringBuilder builtinOutput = new StringBuilder();
@@ -383,12 +376,7 @@ public class Main {
             return;
         }
 
-        /*
-         * CASE 2
-         * external | builtin
-         *
-         * ls | type exit
-         */
+      //case 2
         if (!isBuiltin(leftCmd) && isBuiltin(rightCmd)) {
 
             ProcessBuilder pb =
@@ -437,10 +425,7 @@ public class Main {
             return;
         }
 
-        /*
-         * CASE 3
-         * external | external
-         */
+        // case 3
         executePipeline(commandLine);
     }
     
