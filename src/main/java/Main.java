@@ -20,7 +20,7 @@ public class Main {
 	}
 
     private static final List<Job> backgroundJobs = new ArrayList<>();
-    private static int nextJobId = 1;
+//    private static int nextJobId = 1;
 
     public static void main(String[] args) throws Exception {
     	Scanner sc = new Scanner(System.in);
@@ -273,9 +273,13 @@ public class Main {
 	            		if (!background) {
 	            			process.waitFor();
 	            		} else {
-                            Job job = new Job(nextJobId++, process, rawCommandLine);
-                            backgroundJobs.add(job);
-                            System.out.println("[" + job.id + "] " + process.pid());
+	            			int jobId = getNextJobId();
+
+	            			Job job = new Job(jobId, process, rawCommandLine);
+
+	            			backgroundJobs.add(job);
+
+	            			System.out.println("[" + job.id + "] " + process.pid());
                         }
 	            	} else {
 	            		System.err.println(command+": command not found");
@@ -374,6 +378,22 @@ public class Main {
     	}
     	return null;
     }
+    
+    private static int getNextJobId() {
+
+        if (backgroundJobs.isEmpty()) {
+            return 1;
+        }
+
+        int maxId = 0;
+
+        for (Job job : backgroundJobs) {
+            maxId = Math.max(maxId, job.id);
+        }
+
+        return maxId + 1;
+    }
+    
     private static void reapCompletedJobs() {
 
         int size = backgroundJobs.size();
