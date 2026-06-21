@@ -45,6 +45,10 @@ public class Main {
     		
     		//Parse the input string into arguments properly handling single quotes
     		List<String> argsList = parseArgument(string);
+    		if (string.contains("|")) {
+    		    executePipeline(string);
+    		    continue;
+    		}
     		if(argsList.isEmpty()) {
     			continue;
     		}
@@ -296,6 +300,73 @@ public class Main {
     			}
     		}
     	}  
+    }
+    
+    private static void executePipeline(String commandLine) throws Exception {
+
+        String[] parts = commandLine.split("\\|", 2);
+
+        String leftCmd = parts[0].trim();
+        String rightCmd = parts[1].trim();
+
+        List<String> leftArgs = parseArgument(leftCmd);
+        List<String> rightArgs = parseArgument(rightCmd);
+
+        ProcessBuilder pb1 = new ProcessBuilder(leftArgs);
+        pb1.directory(new File(System.getProperty("user.dir")));
+
+        ProcessBuilder pb2 = new ProcessBuilder(rightArgs);
+        pb2.directory(new File(System.getProperty("user.dir")));
+
+        Process p1 = pb1.start();
+        Process p2 = pb2.start();
+
+        Thread pipeThread = new Thread(() -> {
+            try (
+                var in = p1.getInputStream();
+                var out = p2.getOutputStream()
+            ) {
+                in.transferTo(out);
+                out.close();
+            } catch (Exception ignored) {
+            }
+        });
+
+        pipeThread.start();
+
+        Thread outputThread = new Thread(() -> {
+            try {
+                p2.getInputStream().transferTo(System.out);
+            } catch (Exception ignored) {
+            }
+        });
+
+        Thread errorThread1 = new Thread(() -> {
+            try {
+                p1.getErrorStream().transferTo(System.err);
+            } catch (Exception ignored) {
+            }
+        });
+
+        Thread errorThread2 = new Thread(() -> {
+            try {
+                p2.getErrorStream().transferTo(System.err);
+            } catch (Exception ignored) {
+            }
+        });
+
+        outputThread.start();
+        errorThread1.start();
+        errorThread2.start();
+
+        p1.waitFor();
+        pipeThread.join();
+
+        p2.waitFor();
+
+        outputThread.join();
+        errorThread1.join();
+        errorThread2.join();
     }
     
     private static List<String> parseArgument(String string){
